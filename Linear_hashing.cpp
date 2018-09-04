@@ -1,7 +1,7 @@
 #include<bits/stdc++.h>
 #include<iostream>
 using namespace std;
-int bucket_size = 1;
+int bucket_size = 40;
 int Total_Normal_Buckets = 1;
 int Total_Overflow_Buckets = 0;
 
@@ -11,7 +11,7 @@ class bucket{
 		int *Array_Of_Records;
 		int overflow_index = -1;
 		bucket(){
-			Array_Of_Records = new int[ bucket_size];
+			Array_Of_Records = new int[bucket_size];
 			empty_records =  bucket_size;
 		}
 		
@@ -61,7 +61,7 @@ void Linear_Hash::rehash_records(int rehash_address){
 	Total_Normal_Buckets++;
 	int travel_pointer = rehash_address;
 	vector <int> records_to_be_rehashed;
-	int size = sizeof(Se_Memory[travel_pointer].Array_Of_Records)/sizeof(Se_Memory[travel_pointer].Array_Of_Records[0]);
+	int size = bucket_size;
 	int count = 0;
 	size--;
 	while(travel_pointer != -1){
@@ -149,6 +149,7 @@ int main(){
        LH.insert_record(record_value,0);
   }
   LH.print();
+
   inFile.close();
 
   return 0;
