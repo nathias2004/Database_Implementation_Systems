@@ -48,6 +48,9 @@ class Extendible_Hash{
 	void Fetch_Directory_Entries_to_Primary();
 	vector<unsigned int> save_to_vector(unsigned int de_address,unsigned workout_index,unsigned int temp_Local_Dpt);
 	void Change_Pointers(unsigned int initial_de_address,unsigned int new_bucket_index,unsigned int T_D, unsigned int temp,unsigned int temp_Local_Dpt);
+	void Child_To_Parent();
+	vector<unsigned int> SaveAll_to_vector(unsigned int new_bucket_index,unsigned int workout_index);
+	void Send_Directory_Entries_to_Secondary();
 	void rehash_records(vector<unsigned int>temp_records,unsigned int temp_Local_Dpt,unsigned int workout_index);
 	unsigned int get_index(unsigned int record_value,unsigned int Suffix_Depth);
 	void Simple_push(unsigned int workout_index,unsigned int de_address,unsigned int record_value);
@@ -71,6 +74,17 @@ void Extendible_Hash::Fetch_Directory_Entries_to_Primary(){
 		}
 	}
 }
+
+
+void Extendible_Hash::Send_Directory_Entries_to_Secondary(){
+	unsigned int T_D = (int)pow(2,Global_Dpt);
+	unsigned int total_buckets;
+		total_buckets = (T_D)/bucket_size;
+		for(unsigned int i=0;i<=total_buckets;i++){
+			Se_Memory[i] = Pr_Memory[i] ;
+		}
+}
+
 
 vector<unsigned int> Extendible_Hash::save_to_vector(unsigned int de_address,unsigned workout_index,unsigned int temp_Local_Dpt){
 	vector<unsigned int> temp_records;
@@ -113,7 +127,70 @@ void Extendible_Hash::Change_Pointers(unsigned int initial_de_address,unsigned i
 		}
 		i++;
 	}
+}
 
+void Extendible_Hash::Child_To_Parent(){
+	unsigned int Total_directories = 1;
+	for(int i=0;i<Global_Dpt;i++){
+		Total_directories = Total_directories*2;
+	}
+	for(int i=0;i<Total_directories;i++){
+		unsigned int row_no,column_no;
+		row_no = i/bucket_size;
+		column_no = i%bucket_size;
+		unsigned int parent_add = Pr_Memory[row_no].Array_Of_Records[column_no];
+		unsigned int new_child;
+		new_child = i+Total_directories;
+		row_no = new_child/bucket_size;
+		column_no = new_child%bucket_size;
+		Pr_Memory[row_no].Array_Of_Records[column_no] = parent_add;
+	}
+}
+
+
+vector<unsigned int> Extendible_Hash::SaveAll_to_vector(unsigned int new_bucket_index,unsigned int workout_index){
+	vector<unsigned int>temp_records;
+	for(int i=100001;i<new_bucket_index;i++){       //we are adding data into a vector
+		Pr_Memory[workout_index] = Se_Memory[i];
+		//Are there any overflow buckets
+		if(Pr_Memory[workout_index].overflow_index == -1){
+			unsigned int j = Pr_Memory[workout_index].empty_records;
+			for(;j<bucket_size;j++){
+				temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[j]);
+			}
+			Pr_Memory[workout_index].empty_records = bucket_size;
+			Pr_Memory[workout_index].overflow_index = -1;
+			Se_Memory[i] = Pr_Memory[workout_index];
+		}
+		else{
+			//No change in the local depth here
+			unsigned int j = Pr_Memory[workout_index].empty_records;
+			unsigned int next_index;
+			for(;j<bucket_size;j++){
+				temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[j]);
+			}
+			Pr_Memory[workout_index].empty_records = bucket_size;
+			next_index = Pr_Memory[workout_index].overflow_index;
+			Pr_Memory[workout_index].overflow_index = -1;
+			Se_Memory[i] = Pr_Memory[workout_index];
+			do{
+				Pr_Memory[workout_index] = Se_Memory[next_index];
+				unsigned int j = Pr_Memory[workout_index].empty_records;
+				unsigned int next_index;
+				for(;j<bucket_size;j++){
+					temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[j]);
+				}
+				Pr_Memory[workout_index].empty_records = bucket_size;
+			  unsigned int temp_next_index = next_index;
+				next_index = Pr_Memory[workout_index].overflow_index;
+				Pr_Memory[workout_index].overflow_index = -1;
+				Pr_Memory[workout_index].Local_Dpt = 0;
+				Avail_OverFlow_Buckets.push(temp_next_index);
+				Se_Memory[temp_next_index] = Pr_Memory[workout_index];
+			}while(next_index != -1);
+	   }
+	}
+	return temp_records;
 }
 
 void Extendible_Hash::rehash_records(vector<unsigned int>temp_records,unsigned int temp_Local_Dpt,unsigned int workout_index){
@@ -150,8 +227,10 @@ void Extendible_Hash::rehash_records(vector<unsigned int>temp_records,unsigned i
 			Se_Memory[new_hashed_bucket] = Pr_Memory[workout_index];
 		}
 	}
-
-
+	Pr_Memory[workout_index].empty_records = bucket_size;
+	Pr_Memory[workout_index].overflow_index = -1;
+	Pr_Memory[workout_index].Local_Dpt = 0;
+	Avail_Workout_Buckets.push(workout_index);
 }
 
 
@@ -206,103 +285,48 @@ void Extendible_Hash::insert_record(unsigned int record_value, unsigned int flag
 		//Q6.Check for simple rehashing or Directory Expansion
 		if(Pr_Memory[workout_index].Local_Dpt < Global_Dpt){
 			//Q7.Add one more bucket and change the pointers since ld<gd. To do that first save all the records in a vector
+			//Q8.save all rcords to a vector
+			//Q9.add a new bucket and change the pointers of the directories
+			//Q10.send the records to the new buckets and rehash
 			vector<unsigned int> temp_records;
 			de_address = initial_de_address;
-			//Q8.save all rcords to a vector
 			temp_records = save_to_vector(de_address,workout_index,temp_Local_Dpt);
 			temp_records.push_back(record_value);
 			unsigned int temp;
 			temp = temp_records[0]<<(32 - Local_Depth);
 			temp = temp>>(32 - Local_Depth);
-			//Q9.add a new bucket and change the pointers of the directories
 			new_bucket_index++;        
 			Change_Pointers(initial_de_address,new_bucket_index,T_D,temp,temp_Local_Dpt);
-
-			// send the records to the new buckets
 			rehash_records(temp_records,temp_Local_Dpt,workout_index);
-
-							
 		}
 		else if(Pr_Memory[workout_index].Local_Dpt == Global_Dpt && flag == 0){
-			//complete directory exansion
-			//put all the pointers child pointers pointing to the parent pointer
+			//Q11.directory expansion
+			//Q12.Point all the child pointers to the parent pointer
+			//Q13.Increase the Global Depth
+			//Q14.Increasethe local depth of the divided
+			//Q15.reinsert all the records
+			//Q16.copy the PM to SM
+			//Q17.Free the workout index 
+			Child_To_Parent();
 			Global_Dpt++;
-			unsigned int Total_directories = 1;
-			for(int i=0;i<Global_Dpt;i++){
-				Total_directories = Total_directories*2;
-			}
-			for(int i=0;i<Total_directories;i++){
-				unsigned int row_no,column_no;
-				row_no = i/bucket_size;
-				column_no = i%bucket_size;
-				unsigned int parent_add = Pr_Memory[row_no].Array_Of_Records[column_no];
-				unsigned int new_child;
-				new_child = i+Total_directories;
-				row_no = new_child/bucket_size;
-				column_no = new_child%bucket_size;
-				Pr_Memory[row_no].Array_Of_Records[column_no] = parent_add;
-			}
-			//mapping of all the new directries completed
 			vector<unsigned int>temp_records;
-
-			for(int i=100001;i<new_bucket_index;i++){       //we are adding data into a vector
-				Pr_Memory[workout_index] = Se_Memory[i];
-
-				if(Pr_Memory[workout_index].overflow_index == -1){
-					//there are no overflow buckets;
-					unsigned int j = Pr_Memory[workout_index].empty_records;
-					for(;j<bucket_size;j++){
-						temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[j]);
-					}
-					Pr_Memory[workout_index].empty_records = bucket_size;
-					Pr_Memory[workout_index].overflow_index = -1;
-					Se_Memory[i] = Pr_Memory[workout_index];
-				}
-				else{
-					unsigned int j = Pr_Memory[workout_index].empty_records;
-					unsigned int next_index;
-					for(;j<bucket_size;j++){
-						temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[j]);
-					}
-					Pr_Memory[workout_index].empty_records = bucket_size;
-					next_index = Pr_Memory[workout_index].overflow_index;
-					Pr_Memory[workout_index].overflow_index = -1;
-					Se_Memory[i] = Pr_Memory[workout_index];
-					do{
-						Pr_Memory[workout_index] = Se_Memory[next_index];
-						unsigned int j = Pr_Memory[workout_index].empty_records;
-						unsigned int next_index;
-						for(;j<bucket_size;j++){
-							temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[j]);
-						}
-						Pr_Memory[workout_index].empty_records = bucket_size;
-					  unsigned int temp_next_index = next_index;
-						next_index = Pr_Memory[workout_index].overflow_index;
-						Pr_Memory[workout_index].overflow_index = -1;
-						Pr_Memory[workout_index].Local_Dpt = 0;
-						Avail_OverFlow_Buckets.push(temp_next_index);
-						Se_Memory[temp_next_index] = Pr_Memory[workout_index];
-					}while(next_index != -1);
-				}
-			}
-
+			temp_records = SaveAll_to_vector(new_bucket_index,workout_index);
+			temp_records.push_back(record_value);
 			Pr_Memory[workout_index] = Se_Memory[initial_de_address];
 			Pr_Memory[workout_index].Local_Dpt = Pr_Memory[workout_index].Local_Dpt + 1;
 			Se_Memory[initial_de_address] = Pr_Memory[workout_index];
 			Pr_Memory[workout_index].empty_records = bucket_size;
 			Pr_Memory[workout_index].Local_Dpt = 0;
 			Pr_Memory[workout_index].overflow_index = -1;
-			temp_records.push_back(record_value);
+			Avail_Workout_Buckets.push(workout_index);
 
 			for(int i=0;i<temp_records.size();i++){
 				insert_record(temp_records[i],1);	
 			}
-
-
-
-
-		}                                        //inserting after expansion
+			Send_Directory_Entries_to_Secondary();
+		}                                        
 		else{
+			//Q16.inserting after expansion
 			while(Pr_Memory[workout_index].overflow_index != -1){
 				de_address = Pr_Memory[workout_index].overflow_index;
 				Pr_Memory[workout_index] = Se_Memory[de_address];
@@ -323,12 +347,18 @@ void Extendible_Hash::insert_record(unsigned int record_value, unsigned int flag
 				unsigned int new_bucket_add;
 				new_bucket_add = Avail_OverFlow_Buckets.top();
 				Pr_Memory[workout_index].overflow_index = new_bucket_add;
+				Se_Memory[de_address] = Pr_Memory[workout_index];
 				Pr_Memory[workout_index] = Se_Memory[new_bucket_add];
 				Pr_Memory[workout_index].Array_Of_Records[bucket_size - 1] = record_value;
 				Pr_Memory[workout_index].Local_Dpt = Local_Depth;
 				Pr_Memory[workout_index].overflow_index = -1;
 				Pr_Memory[workout_index].empty_records--;
 				Se_Memory[new_bucket_add] = Pr_Memory[workout_index];
+				//push the workout index
+				Pr_Memory[workout_index].empty_records = bucket_size;
+				Pr_Memory[workout_index].Local_Dpt = 0;
+				Pr_Memory[workout_index].overflow_index = -1;
+				Avail_Workout_Buckets.push(workout_index);
 			}
 		}
   }
