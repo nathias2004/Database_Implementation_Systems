@@ -46,6 +46,8 @@ class Extendible_Hash{
 	}
 	void insert_record(unsigned int record_value,unsigned int flag);
 	void Fetch_Directory_Entries_to_Primary();
+	vector<unsigned int> save_to_vector(unsigned int de_address,unsigned workout_index,unsigned int temp_Local_Dpt);
+	void Change_Pointers(unsigned int initial_de_address,unsigned int new_bucket_index,unsigned int T_D, unsigned int temp,unsigned int temp_Local_Dpt);
 	void rehash_records(vector<unsigned int>temp_records,unsigned int temp_Local_Dpt,unsigned int workout_index);
 	unsigned int get_index(unsigned int record_value,unsigned int Suffix_Depth);
 	void Simple_push(unsigned int workout_index,unsigned int de_address,unsigned int record_value);
@@ -68,6 +70,50 @@ void Extendible_Hash::Fetch_Directory_Entries_to_Primary(){
 			Pr_Memory[i] = Se_Memory[i];
 		}
 	}
+}
+
+vector<unsigned int> Extendible_Hash::save_to_vector(unsigned int de_address,unsigned workout_index,unsigned int temp_Local_Dpt){
+	vector<unsigned int> temp_records;
+	int count = 0;
+	do{
+		Pr_Memory[workout_index] = Se_Memory[de_address];
+		for (int i = 0; i<bucket_size; i++){
+			temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[i]);
+		}
+		Se_Memory[de_address].empty_records = bucket_size;
+		Se_Memory[de_address].Local_Dpt = temp_Local_Dpt;
+		Se_Memory[de_address].overflow_index = -1;
+		count++;
+		if(count>1){
+			Se_Memory[de_address].Local_Dpt = 0;
+			Avail_OverFlow_Buckets.push(de_address);
+		}
+		de_address = Pr_Memory[workout_index].overflow_index;
+	}while(de_address != -1);
+	return temp_records; 
+}
+
+void Extendible_Hash::Change_Pointers(unsigned int initial_de_address,unsigned int new_bucket_index,unsigned int T_D, unsigned int temp,unsigned int temp_Local_Dpt){
+	int row_index = 0, column_index = 0, i=0;
+
+	while(i<T_D){
+		if(Pr_Memory[row_index].Array_Of_Records[column_index] == initial_de_address){
+			unsigned int temp_pointer;
+			temp_pointer = i<<(32 - temp_Local_Dpt);
+			temp_pointer = temp_pointer>>(32 - temp_Local_Dpt);
+			if(temp_pointer == temp){
+				Pr_Memory[row_index].Array_Of_Records[column_index] = new_bucket_index;
+				Se_Memory[row_index].Array_Of_Records[column_index] = new_bucket_index;
+			}
+		}
+		column_index++;
+		if(column_index >= bucket_size){
+			row_index++;
+			column_index = 0;
+		}
+		i++;
+	}
+
 }
 
 void Extendible_Hash::rehash_records(vector<unsigned int>temp_records,unsigned int temp_Local_Dpt,unsigned int workout_index){
@@ -162,49 +208,16 @@ void Extendible_Hash::insert_record(unsigned int record_value, unsigned int flag
 			//Q7.Add one more bucket and change the pointers since ld<gd. To do that first save all the records in a vector
 			vector<unsigned int> temp_records;
 			de_address = initial_de_address;
-			int count = 0;
-			do{
-				Pr_Memory[workout_index] = Se_Memory[de_address];
-				for (int i = 0; i<bucket_size; i++){
-					temp_records.push_back(Pr_Memory[workout_index].Array_Of_Records[i]);
-				}
-				Se_Memory[de_address].empty_records = bucket_size;
-				Se_Memory[de_address].Local_Dpt = temp_Local_Dpt;
-				Se_Memory[de_address].overflow_index = -1;
-				count++;
-				if(count>1){
-					Avail_OverFlow_Buckets.push(de_address);
-				}
-				de_address = Pr_Memory[workout_index].overflow_index;
-			}while(de_address != -1);
-
+			//Q8.save all rcords to a vector
+			temp_records = save_to_vector(de_address,workout_index,temp_Local_Dpt);
+			temp_records.push_back(record_value);
 			unsigned int temp;
 			temp = temp_records[0]<<(32 - Local_Depth);
 			temp = temp>>(32 - Local_Depth);
-			//add a new bucket and change the pointers of the directories
-			//first change the pointers
-			new_bucket_index++;        //adding new bucket
-			int row_index = 0;
-			int column_index = 0;
-			int i = 0;
-			while(i<T_D){
-				if(Pr_Memory[row_index].Array_Of_Records[column_index] == initial_de_address){
-					unsigned int temp_pointer;
-					temp_pointer = i<<(32 - temp_Local_Dpt);
-					temp_pointer = temp_pointer>>(32 - temp_Local_Dpt);
-					if(temp_pointer == temp){
-						Pr_Memory[row_index].Array_Of_Records[column_index] = new_bucket_index;
-						Se_Memory[row_index].Array_Of_Records[column_index] = new_bucket_index;
-					}
-				}
-				column_index++;
-				if(column_index >= bucket_size){
-					row_index++;
-					column_index = 0;
-				}
-				i++;
-			}
-			temp_records.push_back(record_value);
+			//Q9.add a new bucket and change the pointers of the directories
+			new_bucket_index++;        
+			Change_Pointers(initial_de_address,new_bucket_index,T_D,temp,temp_Local_Dpt);
+
 			// send the records to the new buckets
 			rehash_records(temp_records,temp_Local_Dpt,workout_index);
 
