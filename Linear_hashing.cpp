@@ -1,7 +1,7 @@
 #include<bits/stdc++.h>
 #include<iostream>
 using namespace std;
-int bucket_size = 10;
+int bucket_size = 40;
 int Total_Normal_Buckets = 1;
 int Total_Overflow_Buckets = 0;
 int search_cost=0;
@@ -180,12 +180,12 @@ void Linear_Hash::insert_record(int record_value, int flag){
 
 int main(){ 
 	ifstream inFile;	
-	ofstream inFile2;
+	ofstream inFile1,inFile2,inFile3;
   int record_value;
-  inFile.open("dataset_uniform.txt");
-  inFile1.open("LH_10_StorageUtil.txt");
-  inFile2.open("LH_10_Avg_Suc_Cost");
-  inFile3.open("LH_10_Splitting_Cost.txt");
+  inFile.open("dataset_highbit_uniform.txt");
+  inFile1.open("Metrics_Data/High_Bit_Data/LH_40_StorageUtil.txt");
+  inFile2.open("Metrics_Data/High_Bit_Data/LH_40_Avg_Suc_Cost.txt");
+  inFile3.open("Metrics_Data/High_Bit_Data/LH_40_Splitting_Cost.txt");
   
   Linear_Hash LH;
   int count=1;

@@ -497,9 +497,9 @@ int main(){
 	vector <unsigned int> All_Records;
   unsigned int record_value;
   inFile.open("dataset_uniform.txt");
-  inFile1.open("EH_10_StorageUtil.txt");
-  inFile2.open("EH_10_Avg_Suc_Cost");
-  inFile3.open("EH_10_Splitting_Cost.txt");
+  inFile1.open("Metrics_Data/High_Bit_Data/EH_10_StorageUtil.txt");
+  inFile2.open("Metrics_Data/High_Bit_Data/EH_10_Avg_Suc_Cost.txt");
+  inFile3.open("Metrics_Data/High_Bit_Data/EH_10_Splitting_Cost.txt");
   Extendible_Hash EH;
   while (inFile >> record_value){ 
 	 All_Records.push_back(record_value); 
