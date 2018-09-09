@@ -1,9 +1,15 @@
 #include<bits/stdc++.h>
 #include<iostream>
 using namespace std;
-int bucket_size = 40;
+int bucket_size = 10;
 int Total_Normal_Buckets = 1;
 int Total_Overflow_Buckets = 0;
+int search_cost=0;
+int Splitting_cost=0;
+unsigned seed1 = std::chrono::system_clock::now().time_since_epoch().count();
+default_random_engine gen(seed1); //gen(time(NULL));
+int A=0,B=5000;
+uniform_int_distribution<int> dist(0,B);
 
 class bucket{
 	public:
@@ -38,8 +44,36 @@ class Linear_Hash{
 	void rehash_records(int rehash_address);
 	int get_hash_value(int record_value);
 	void print();
+	void search(int record_value);
 };
 
+
+void Linear_Hash::search(int record_value){
+	int temp_bucket_index;
+	temp_bucket_index = get_hash_value(record_value);
+	int record_index = Se_Memory[temp_bucket_index].empty_records;
+
+	if(record_index > 0){
+		search_cost++;
+		Se_Memory[temp_bucket_index].Array_Of_Records[record_index - 1] = record_value;
+		Se_Memory[temp_bucket_index].empty_records--;
+	}
+	else{
+		int travel_pointer = Se_Memory[temp_bucket_index].overflow_index;
+		int pre_travel_pointer = temp_bucket_index;
+		while(travel_pointer != -1){
+			for(int i=0;i<bucket_size;i++){
+				if(Se_Memory[pre_travel_pointer].Array_Of_Records[i]==record_value){
+					search_cost++;
+					return;
+				}
+			}
+			search_cost++;
+			pre_travel_pointer = travel_pointer;
+			travel_pointer = Se_Memory[travel_pointer].overflow_index;
+		}
+	}
+}
 void Linear_Hash::print(){
 	for(int i=0;i<200000;i++){
 		cout<<Se_Memory[i].Array_Of_Records[0]<<" ";
@@ -66,6 +100,7 @@ void Linear_Hash::rehash_records(int rehash_address){
 	size--;
 	while(travel_pointer != -1){
 		int i = size-1;
+		Splitting_cost++;
 		while(Se_Memory[travel_pointer].empty_records != size){
 			records_to_be_rehashed.push_back(Se_Memory[travel_pointer].Array_Of_Records[i]);
 			Se_Memory[travel_pointer].Array_Of_Records[i] = -1;
@@ -110,6 +145,9 @@ void Linear_Hash::insert_record(int record_value, int flag){
 		}
 		if(Se_Memory[pre_travel_pointer].empty_records == 0){
 			//Taking a new and adding the overflow bucket
+			if(flag){
+				Splitting_cost++;
+			}
 			int overflow_bucket_address =  Avail_OverFlow_Buckets.top();
 			Avail_OverFlow_Buckets.pop();
 			Total_Overflow_Buckets++;
@@ -141,14 +179,40 @@ void Linear_Hash::insert_record(int record_value, int flag){
 
 
 int main(){ 
-	ifstream inFile;
+	ifstream inFile;	
+	ofstream inFile2;
   int record_value;
   inFile.open("dataset_uniform.txt");
+  inFile1.open("LH_10_StorageUtil.txt");
+  inFile2.open("LH_10_Avg_Suc_Cost");
+  inFile3.open("LH_10_Splitting_Cost.txt");
+  
   Linear_Hash LH;
+  int count=1;
+  vector <unsigned int> All_Records;
   while (inFile >> record_value){  
+  		All_Records.push_back(record_value);
        LH.insert_record(record_value,0);
+       inFile1<<count<<" "<<(float)count/((Total_Normal_Buckets+Total_Overflow_Buckets)*bucket_size)<<"\n";
+       if( (count)%5000 == 0 ){
+	   		for(int i=0;i<50;i++){
+				unsigned int number = dist(gen);
+				LH.search(All_Records[number]);
+			}
+			inFile2<<B<<" "<<(float)search_cost/50<<"\n";
+			search_cost = 0;
+			B = B+5000;
+   		}
+		if(Splitting_cost > 0){
+			inFile3<<count<<" "<<Splitting_cost<<"\n";
+		}
+		Splitting_cost=0;
+   		search_cost=0;
+	   count++;
   }
-  LH.print();
+	inFile1.close();
+	inFile2.close();
+	inFile3.close();
 
   inFile.close();
 
