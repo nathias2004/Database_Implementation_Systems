@@ -509,7 +509,7 @@ int main(){
    if( (count)%5000 == 0 ){
    		for(int i=0;i<50;i++){
 				unsigned int number = dist(gen);
-				EH.search(number);
+				EH.search(All_Records[number]);
 		}
 		inFile2<<B<<" "<<(float)search_cost/50<<"\n";
 		search_cost = 0;
