@@ -97,7 +97,6 @@ void Linear_Hash::rehash_records(int rehash_address){
 	vector <int> records_to_be_rehashed;
 	int size = bucket_size;
 	int count = 0;
-	size--;
 	while(travel_pointer != -1){
 		int i = size-1;
 		Splitting_cost++;
